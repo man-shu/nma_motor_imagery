@@ -29,10 +29,10 @@ import os
 if __name__ == "__main__":
     os.chdir('../')
     datasets = []
-    # multiclass option 
+    title = 'imagery_hfb_3s' # a lot of way to change this title to try different tasks
+    # multiclass option
     for i in range(7):
         base_path = os.path.join('data',f'sbj_{i}')
-        title = 'imagery_hfb_3s' # a lot of way to change this title to try different tasks
         curr_data = load_psd_dataset(title, base_path)
         # filter out rest samples for now
         curr_data = filter_label(curr_data,'rest')

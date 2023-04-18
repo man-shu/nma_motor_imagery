@@ -18,14 +18,14 @@ def plot_conf_mats(conf_mats, model, lbl_corr, title, prefix, path=None):
     if not path:
         fig.savefig(f'{prefix}/plots/{model}_conf.png')
     else:
-        os.makedirs(os.path.join(prefix,f'plots',path), exist_ok=True)
-        fig.savefig(os.path.join(prefix, f'plots',path,f'{model}_conf.png'))
+        os.makedirs(os.path.join(prefix, 'plots', path), exist_ok=True)
+        fig.savefig(os.path.join(prefix, 'plots', path, f'{model}_conf.png'))
     plt.close(fig)
 
 def postprocess_classif_metrics(results, lbl_corr, prefix, title=''):
     conf_mats = {}
     df = pd.DataFrame(columns=['model', 'subject','precison','recall','F1', 'acc'])
-    if not 'outputs' in prefix:
+    if 'outputs' not in prefix:
         prefix = os.path.join('outputs',prefix)
     os.makedirs(prefix, exist_ok=True)
 
