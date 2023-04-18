@@ -17,9 +17,9 @@ import re
 
 def get_all_data(save_to='motor_imagery.npz'):
     fname = save_to
-    url = "https://osf.io/ksqv8/download"
-
     if not os.path.isfile(fname):
+        url = "https://osf.io/ksqv8/download"
+
         try:
             r = requests.get(url)
         except requests.ConnectionError:
@@ -62,7 +62,9 @@ def get_events(subject_data):
     # create event array with [onset, duration, trial_type]
     onset = np.concatenate((subject_data['t_off'], subject_data['t_on']))
     onset = np.sort(onset)
-    trial_type = np.insert(subject_data['stim_id'], range(1, len(subject_data['stim_id'])+1, 1), 10)
+    trial_type = np.insert(
+        subject_data['stim_id'], range(1, len(subject_data['stim_id']) + 1), 10
+    )
     duration = np.diff(onset, append=onset[-1]+(onset[-1]-onset[-2]))
     events = np.array([onset, duration, trial_type]).T
     events = np.delete(events, -1, 0)
@@ -77,9 +79,7 @@ def get_montage(subject_data, raw):
     loc_dict = dict(zip(channel_names, zip(*mni_locs.T)))
     for channel in channel_names:
         loc_dict[str(channel)] = np.array(loc_dict[str(channel)])
-    montage = mne.channels.make_dig_montage(loc_dict, coord_frame='head')
-
-    return montage
+    return mne.channels.make_dig_montage(loc_dict, coord_frame='head')
 
 def get_raw(subject_data):
     # create mne info data structure
@@ -145,17 +145,14 @@ def subset_data_paths(subjects=[0], file_keys=['mvmt','3s','hfb']):
     root_ignore = ['.gitignore','./data']
     for root, dirs, files in os.walk("./data", topdown=False):
         if (root in root_ignore): continue
-        if not int(re.findall(r'\d+',root)[0]) in subjects: continue
+        if int(re.findall(r'\d+', root)[0]) not in subjects: continue
         for f in files:
             skip_file = False
             for key in file_keys:
                 if '|' in key:
-                    skip_file = True
                     split_keys = key.split('|')
-                    for k2 in split_keys:
-                        if k2 in f:
-                            skip_file = False
-                elif not key in f:
+                    skip_file = all(k2 not in f for k2 in split_keys)
+                elif key not in f:
                     skip_file = True
             if not skip_file:
                 paths.append(root), titles.append(f.replace('_data.pkl',''))

@@ -59,7 +59,7 @@ def make_design_matrix(raw, events, event_ids, pad_constant=True, trial_by_trial
         X = np.zeros((n_time_points, n_event_types))
         for event, event_id in enumerate(event_ids):
             if event_id == 10:
-                np.put(X[:, event], [* range(0, int((n_time_points-1)/2))], [1])
+                np.put(X[:, event], [*range(int((n_time_points-1)/2))], [1])
             else:
                 np.put(X[:, event], [* range(3000, n_time_points)], [1])
     else: 
@@ -81,7 +81,7 @@ def make_design_matrix(raw, events, event_ids, pad_constant=True, trial_by_trial
             # of trial in the column corresponding to that event
             for onset, dur in zip(event_trial_onsets, event_trial_dur):
                 np.put(X[:, event], [* range(onset, onset+dur)], [1])
-    
+
     if pad_constant:
         n_time_points = X.shape[0]
         constant = np.ones(n_time_points)
@@ -93,17 +93,13 @@ def make_design_matrix(raw, events, event_ids, pad_constant=True, trial_by_trial
 
 def fit_GLM(y, X, poisson=False):
 
-    if not poisson:
-        # fitting linear gaussian GLM
-        # theta = np.linalg.inv(X.T @ X) @ X.T @ y
-        model = linear_model.LinearRegression()
-        model.fit(X, y)
-        theta = model.coef_
-    else:
-        model = linear_model.GammaRegressor()
-        model.fit(X, y)
-        theta = model.coef_
-
+    model = (
+        linear_model.GammaRegressor()
+        if poisson
+        else linear_model.LinearRegression()
+    )
+    model.fit(X, y)
+    theta = model.coef_
     return theta, model
 
 def predict_y(model, X, y):
@@ -182,16 +178,8 @@ def run_glm(sub=0, sess=0, poisson=False, trial_by_trial=False):
     # get all mne specific data structures
     events, event_ids, raw, epochs, evokeds = get_mne_data(subject=sub, session=sess, epoch_with_rest=True)
 
-    if sess == 0:
-        sess = 'real'
-    else:
-        sess = 'imagery'
-
-    if poisson:
-        lnk = 'gamma'
-    else:
-        lnk = 'gaussian'
-
+    sess = 'real' if sess == 0 else 'imagery'
+    lnk = 'gamma' if poisson else 'gaussian'
     if trial_by_trial:
         freq_filt_epochs = epochs.load_data().copy().filter(70, 115)
         conditions = list(event_ids.keys())
@@ -273,7 +261,7 @@ def create_Xy(subject, sessions=['real', 'imagery'], only_sessions=False, only_m
                 label = sess + '_' + cond.split('-')[1]
             theta = pd.read_csv(os.path.join(data_path, file), header=None)
             theta = theta.to_numpy()
-            labels = [label for i in range(theta.shape[1])]
+            labels = [label for _ in range(theta.shape[1])]
         else:
             continue
         theta_all.append(theta)
@@ -287,15 +275,11 @@ def create_Xy(subject, sessions=['real', 'imagery'], only_sessions=False, only_m
 
 def decode(X, y, XGB=False):
 
-    if XGB:
-        model = XGBClassifier()
-    else:
-        model = svm.SVC(class_weight='balanced')
-
+    model = XGBClassifier() if XGB else svm.SVC(class_weight='balanced')
     le = LabelEncoder()
     int_labels = le.fit_transform(y)
     y = int_labels
-    lbl_corr = {i:key for i,key in enumerate(le.classes_)}
+    lbl_corr = dict(enumerate(le.classes_))
 
     # cross validate confusion matr
     y_pred = cross_val_predict(model, X, y, cv=10)
@@ -338,10 +322,10 @@ if __name__ == "__main__":
     #         run_glm(sub=sub, sess=sess, poisson=False, trial_by_trial=True)
 
     score_dict = {}
-    for sub in range(0,7):
+    for sub in range(7):
         X, y = create_Xy(sub, ['real', 'imagery'], only_sessions=False)
         y_pred, y, lbl_corr = decode(X, y, XGB=True)
-        score_dict['sbj_'+str(sub)] = {'y': y, 'y_pred': y_pred}
+        score_dict[f'sbj_{str(sub)}'] = {'y': y, 'y_pred': y_pred}
 
     postprocess_classif_metrics(score_dict, 'SVM', lbl_corr, title='4 class acc')
 
